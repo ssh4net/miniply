@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <iostream>
 
 //
 // Timer class
@@ -85,6 +86,7 @@ struct TriMesh {
   float* pos          = nullptr; // has 3*numVerts elements.
   float* normal       = nullptr; // if non-null, has 3 * numVerts elements.
   float* uv           = nullptr; // if non-null, has 2 * numVerts elements.
+  unsigned char* color = nullptr; // if non-null, has 4 * numVerts elements.
   uint32_t numVerts   = 0;
 
   // Per-index data
@@ -99,6 +101,7 @@ struct TriMesh {
     delete[] pos;
     delete[] normal;
     delete[] uv;
+    delete[] color;
     delete[] indices;
   }
 
@@ -133,7 +136,7 @@ static TriMesh* parse_file_with_miniply(const char* filename, bool assumeTriangl
     assumeTriangles = faceElem->convert_list_to_fixed_size(faceElem->find_property("vertex_indices"), 3, faceIdxs);
   }
 
-  uint32_t propIdxs[3];
+  uint32_t propIdxs[4];
   bool gotVerts = false, gotFaces = false;
 
   TriMesh* trimesh = new TriMesh();
@@ -153,6 +156,10 @@ static TriMesh* parse_file_with_miniply(const char* filename, bool assumeTriangl
         trimesh->uv = new float[trimesh->numVerts * 2];
         reader.extract_properties(propIdxs, 2, miniply::PLYPropertyType::Float, trimesh->uv);
       }
+      if (reader.find_color_rgba(propIdxs)) {
+		trimesh->color = new unsigned char[trimesh->numVerts * 4];
+		reader.extract_properties(propIdxs, 4, miniply::PLYPropertyType::UChar, trimesh->color);
+	  }
       gotVerts = true;
     }
     else if (!gotFaces && reader.element_is(miniply::kPLYFaceElement)) {
@@ -290,6 +297,18 @@ int main(int argc, char** argv)
 
     TriMesh* trimesh = parse_file_with_miniply(filename.c_str(), assumeTriangles);
     bool ok = trimesh != nullptr;
+
+    // output the elements of the float array
+    /*
+    for (unsigned int i = 0; i < trimesh->numVerts; i++) {
+        std::cout << "ID: " << i << "\tVX: " << trimesh->pos[i*3] << " " << trimesh->pos[i*3+1] << " " << trimesh->pos[i*3+2] <<
+        "\tUV: " << trimesh->uv[i*2] << " " << trimesh->uv[i*2+1] <<
+        "\tNM: " << trimesh->normal[i*3] << " " << trimesh->normal[i*3+1] << " " << trimesh->normal[i*3+2] <<
+        "\tCL: " << static_cast<unsigned int>(trimesh->color[i*4]) << " " << static_cast<unsigned int>(trimesh->color[i*4+1]) << " " 
+            << static_cast<unsigned int>(trimesh->color[i*4+2]) << " " << static_cast<unsigned int>(trimesh->color[i*4+3]) <<
+        std::endl;
+    }
+    */
 
     timer.stop();
     
